@@ -11,9 +11,11 @@ const useSeatCount = (intervalMs = 30000) => {
     try {
       const timestamp = Date.now()
       const response = await fetch(`/api/seats?t=${timestamp}`, {
-        method: 'GET',
-        cache: 'no-store',
-      })
+        next: {
+          revalidate: 30
+        }
+      }
+        )
       if (!response.ok) {
         throw new Error('Failed to fetch')
       }
