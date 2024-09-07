@@ -10,7 +10,7 @@ const useSeatCount = (intervalMs = 10000) => {
   useEffect(() => {
     const fetchCount = async () => {
       try {
-        const response = await fetch('/api/seats')
+        const response = await fetch('/api/seats', { cache: 'no-store' })
         if (!response.ok) {
           throw new Error('Failed to fetch')
         }
@@ -54,7 +54,7 @@ const AnimatedDigit = ({ digit }: { digit: string }) => (
 )
 
 export default function Home() {
-  const { seats, error } = useSeatCount(10000)
+  const { seats, error } = useSeatCount(30000)
 
   if (error) {
     return (
