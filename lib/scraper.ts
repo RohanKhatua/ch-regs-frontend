@@ -7,7 +7,9 @@ export async function scrapeAvailableSeats(url: string): Promise<string> {
     const page = await browser.newPage();
 
     try {
-        await page.goto(url, { waitUntil: "networkidle0" });
+        // Add a timestamp to the URL to prevent caching
+        const cacheBustedUrl = `${url}${url.includes('?') ? '&' : '?'}_=${Date.now()}`;
+        await page.goto(cacheBustedUrl, { waitUntil: "networkidle0" });
         await page.waitForSelector('.slots button p:last-child');
         const seatsText = await page.$eval('.slots button p:last-child', (el) => el.textContent);
         const availableSeats = seatsText?.match(/\d+/)?.[0] || "0";
