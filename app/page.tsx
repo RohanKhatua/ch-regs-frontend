@@ -1,34 +1,38 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
-const useSeatCount = (intervalMs = 10000) => {
+const useSeatCount = (intervalMs = 30000) => {
   const [seats, setSeats] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    const fetchCount = async () => {
-      try {
-        const response = await fetch('/api/seats', { cache: 'no-store' })
-        if (!response.ok) {
-          throw new Error('Failed to fetch')
-        }
-        const data = await response.json()
-        const availableSeats: string = data.availableSeats
-        const registrations = 800 - parseInt(availableSeats)
-        setSeats(registrations.toString())
-        setError(null)
-      } catch (error) {
-        console.error(error)
-        setError('Error fetching seat count')
+  const fetchCount = useCallback(async () => {
+    try {
+      const timestamp = new Date().getTime()
+      const response = await fetch(`/api/seats?_=${timestamp}`, {
+        method: 'GET',
+        cache: 'no-store',
+      })
+      if (!response.ok) {
+        throw new Error('Failed to fetch')
       }
+      const data = await response.json()
+      const availableSeats: string = data.availableSeats
+      const registrations = 800 - parseInt(availableSeats)
+      setSeats(registrations.toString())
+      setError(null)
+    } catch (error) {
+      console.error(error)
+      setError('Error fetching seat count')
     }
-    fetchCount()
+  }, [])
 
+  useEffect(() => {
+    fetchCount()
     const interval = setInterval(fetchCount, intervalMs)
     return () => clearInterval(interval)
-  }, [intervalMs])
+  }, [fetchCount, intervalMs])
 
   return { seats, error }
 }
