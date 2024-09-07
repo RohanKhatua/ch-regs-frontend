@@ -9,8 +9,8 @@ const useSeatCount = (intervalMs = 30000) => {
 
   const fetchCount = useCallback(async () => {
     try {
-      const timestamp = new Date().getTime()
-      const response = await fetch(`/api/seats?_=${timestamp}`, {
+      const timestamp = Date.now()
+      const response = await fetch(`/api/seats?t=${timestamp}`, {
         method: 'GET',
         cache: 'no-store',
       })
