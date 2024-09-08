@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
     try {
         const availableSeats = await scrapeAvailableSeats(url);
         const response = NextResponse.json({ availableSeats });
-        response.headers.set('Cache-Control', 'no-store, max-age=0')
+        response.headers.set('Cache-Control', 'no-store, max-age=0, must-revalidate')
         response.headers.set('CDN-Cache-Control', 'no-store')
         response.headers.set('Vercel-CDN-Cache-Control', 'no-store')
         response.headers.set('Pragma', 'no-cache')
