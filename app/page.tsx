@@ -23,7 +23,7 @@ const useSeatCount = (intervalMs = 30000) => {
       setError(null)
     } catch (error) {
       console.error(error)
-      setError('Error fetching seat count')
+      setError('Error fetching seat count - data might be stale')
     }
   }, [])
 
@@ -58,15 +58,6 @@ const AnimatedDigit = ({ digit }: { digit: string }) => (
 
 export default function Home() {
   const { seats, error } = useSeatCount(30000)
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center text-red-500 text-2xl">
-        <p>{error}</p>
-      </div>
-    )
-  }
-
   if (!seats) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center text-red-500 text-2xl">
@@ -94,6 +85,7 @@ export default function Home() {
         </div>
         <p className="mt-6 text-gray-400 text-xl">Registrations</p>
       </div>
+      {error && <p className="mt-4 text-red-500 text-xl">{error}</p>}
     </div>
   )
 }
