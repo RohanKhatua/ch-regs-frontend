@@ -11,9 +11,7 @@ const useSeatCount = (intervalMs = 30000) => {
     try {
       const timestamp = Date.now()
       const response = await fetch(`/api/seats?t=${timestamp}`, {
-        next: {
-          revalidate: 0
-        },
+        cache: 'no-store',
       }
       )
       if (!response.ok) {
