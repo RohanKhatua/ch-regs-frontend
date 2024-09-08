@@ -1,5 +1,7 @@
 'use client'
 
+export const fetchCache = 'force-no-store'
+
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -10,10 +12,7 @@ const useSeatCount = (intervalMs = 30000) => {
   const fetchCount = useCallback(async () => {
     try {
       const timestamp = Date.now()
-      const response = await fetch(`/api/seats?t=${timestamp}`, {
-        cache: 'no-store',
-      }
-      )
+      const response = await fetch(`/api/seats?t=${timestamp}`)
       if (!response.ok) {
         throw new Error('Failed to fetch')
       }
