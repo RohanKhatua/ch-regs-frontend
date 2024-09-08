@@ -1,6 +1,7 @@
 'use client'
 
 export const fetchCache = 'force-no-store'
+export const revalidate = 0
 
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
