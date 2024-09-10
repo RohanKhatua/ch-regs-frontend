@@ -12,7 +12,7 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
-import { INTERVAL_MS } from "@/lib/constants";
+import { INTERVAL_MS, TOTAL_SEATS } from "@/lib/constants";
 
 interface DataPoint {
   timestamp: number;
@@ -31,7 +31,6 @@ const useSeatCount = () => {
       const response = await fetch("/api/seats");
       if (!response.ok) throw new Error("Failed to fetch");
       const { currentSeats, historicalData } = await response.json();
-      // console.log("Current Seats - ", currentSeats);
       setSeats(currentSeats);
       setHistoricalData(historicalData);
       setError(null);
@@ -95,7 +94,7 @@ const RegistrationGraph = ({ data }: { data: DataPoint[] }) => (
           domain={["dataMin", "dataMax"]}
           tickFormatter={(unixTime) => new Date(unixTime).toLocaleTimeString()}
         />
-        <YAxis domain={["auto", "auto"]} />
+        <YAxis width={35} domain={["auto", "auto"]} />
         <Line
           type="monotone"
           dataKey="seats"
@@ -108,32 +107,51 @@ const RegistrationGraph = ({ data }: { data: DataPoint[] }) => (
   </div>
 );
 
+const DynamicBorder = ({ percentage }: { percentage: number }) => {
+  return (
+    <div
+      className="absolute inset-0 rounded-lg overflow-hidden"
+      style={{
+        padding: '2px',
+      }}
+    >
+      <div
+        className="absolute top-0 left-0 h-full bg-green-500 transition-all duration-1000 ease-in-out"
+        style={{ width: `${percentage}%` }}
+      />
+      <div
+        className="absolute top-0 right-0 h-full bg-red-500 transition-all duration-1000 ease-in-out"
+        style={{ width: `${100 - percentage}%` }}
+      />
+      <div className="w-full h-full bg-gray-800 rounded-lg relative" />
+    </div>
+  );
+};
+
 export default function Home() {
   const { seats, error, loading, historicalData } = useSeatCount();
+  const percentage = seats ? Math.min((seats / TOTAL_SEATS) * 100, 100) : 0;
 
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center p-4">
-      <div
-        className="bg-gray-800 p-6 sm:p-10 rounded-lg shadow-lg text-center border border-red-500 w-full max-w-lg"
-        style={{
-          boxShadow:
-            "0 0 10px rgba(255, 0, 0, 0.2), 0 0 20px rgba(255, 0, 0, 0.1)",
-        }}
-      >
-        <h1
-          className="text-2xl sm:text-4xl font-bold mb-4 sm:mb-6 text-red-500"
-          style={{
-            textShadow:
-              "0 0 5px rgba(255, 0, 0, 0.5), 0 0 10px rgba(255, 0, 0, 0.3)",
-          }}
-        >
-          Cryptic Hunt 2024
-        </h1>
-        <RegistrationDisplay seats={seats} />
-        <p className="mt-4 sm:mt-6 text-gray-400 text-lg sm:text-xl">
-          Registrations
-        </p>
-        <RegistrationGraph data={historicalData} />
+      <div className="relative bg-gray-800 rounded-lg shadow-lg text-center w-full max-w-lg overflow-hidden">
+        <DynamicBorder percentage={percentage} />
+        <div className="relative p-6 sm:p-10">
+          <h1
+            className="text-2xl sm:text-4xl font-bold mb-4 sm:mb-6 text-red-500"
+            style={{
+              textShadow:
+                "0 0 5px rgba(255, 0, 0, 0.5), 0 0 10px rgba(255, 0, 0, 0.3)",
+            }}
+          >
+            Cryptic Hunt 2024
+          </h1>
+          <RegistrationDisplay seats={seats} />
+          <p className="mt-4 sm:mt-6 text-gray-400 text-lg sm:text-xl">
+            Registrations
+          </p>
+          <RegistrationGraph data={historicalData} />
+        </div>
       </div>
       <div className="h-10 mt-4">
         {error && <div className="text-red-500 text-sm">{error}</div>}
