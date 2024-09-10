@@ -1,39 +1,64 @@
 'use client'
 
-export const fetchCache = 'force-no-store'
-
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { LoaderCircle } from 'lucide-react'
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 
-const useSeatCount = (intervalMs = 30000) => {
-  const [seats, setSeats] = useState<string | null>(null)
+const TOTAL_SEATS = 800
+const INTERVAL_MS = 30000
+const MAX_DATA_POINTS = 50 // Limit the number of data points to store
+
+interface DataPoint {
+  timestamp: number;
+  seats: number;
+}
+
+const useSeatCount = () => {
+  const [seats, setSeats] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState<boolean>(true)
+  const [historicalData, setHistoricalData] = useState<DataPoint[]>([])
 
   const fetchCount = useCallback(async () => {
     try {
-      const timestamp = Date.now()
-      const response = await fetch(`/api/seats?t=${timestamp}`)
-      if (!response.ok) {
-        throw new Error('Failed to fetch')
-      }
-      const data = await response.json()
-      const availableSeats: string = data.availableSeats
-      const registrations = 800 - parseInt(availableSeats)
-      setSeats(registrations.toString())
+      setLoading(true)
+      const response = await fetch(`/api/seats?t=${Date.now()}`)
+      if (!response.ok) throw new Error('Failed to fetch')
+      const { availableSeats } = await response.json()
+      const currentSeats = TOTAL_SEATS - Number(availableSeats)
+      setSeats(currentSeats)
       setError(null)
+
+      // Update historical data
+      setHistoricalData(prevData => {
+        const newData = [...prevData, { timestamp: Date.now(), seats: currentSeats }]
+        const updatedData = newData.slice(-MAX_DATA_POINTS) // Keep only the last MAX_DATA_POINTS
+        // Store in local storage
+        localStorage.setItem('seatHistory', JSON.stringify(updatedData))
+        return updatedData
+      })
     } catch (error) {
       console.error(error)
       setError('Error fetching seat count - data might be stale')
+    } finally {
+      setLoading(false)
     }
-  }, [])
+  }, []) // Remove historicalData from dependencies
 
   useEffect(() => {
-    fetchCount()
-    const interval = setInterval(fetchCount, intervalMs)
-    return () => clearInterval(interval)
-  }, [fetchCount, intervalMs])
+    // Load historical data from local storage on initial render
+    const storedData = localStorage.getItem('seatHistory')
+    if (storedData) {
+      setHistoricalData(JSON.parse(storedData))
+    }
 
-  return { seats, error }
+    fetchCount()
+    const interval = setInterval(fetchCount, INTERVAL_MS)
+    return () => clearInterval(interval)
+  }, [fetchCount])
+
+  return { seats, error, loading, historicalData }
 }
 
 const AnimatedDigit = ({ digit }: { digit: string }) => (
@@ -46,9 +71,7 @@ const AnimatedDigit = ({ digit }: { digit: string }) => (
         animate={{ y: 0 }}
         exit={{ y: 100 }}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        style={{
-          textShadow: '0 0 3px rgba(255, 0, 0, 0.5)',
-        }}
+        style={{ textShadow: '0 0 3px rgba(255, 0, 0, 0.5)' }}
       >
         {digit}
       </motion.span>
@@ -56,36 +79,74 @@ const AnimatedDigit = ({ digit }: { digit: string }) => (
   </div>
 )
 
-export default function Home() {
-  const { seats, error } = useSeatCount(30000)
-  if (!seats) {
-    return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center text-red-500 text-2xl">
-        <p>Loading...</p>
-      </div>
-    )
-  }
+const RegistrationDisplay = ({ seats }: { seats: number | null }) => {
+  const registrationString = useMemo(() =>
+    seats !== null ? seats.toString().padStart(4, '0') : '0000',
+    [seats]
+  )
 
-  const registrationString = seats.toString().padStart(4, '0')
+  return (
+    <div className="flex justify-center">
+      {registrationString.split('').map((digit, index) => (
+        <AnimatedDigit key={index} digit={digit} />
+      ))}
+    </div>
+  )
+}
+
+const RegistrationGraph = ({ data }: { data: DataPoint[] }) => (
+  <div className="w-full h-64 mt-6">
+    <ResponsiveContainer width="100%" height="100%">
+      <LineChart data={data}>
+        <XAxis
+          dataKey="timestamp"
+          type="number"
+          domain={['dataMin', 'dataMax']}
+          tickFormatter={(unixTime) => new Date(unixTime).toLocaleTimeString()}
+        />
+        <YAxis domain={['auto', 'auto']} />
+        <Tooltip
+          labelFormatter={(label) => new Date(label).toLocaleString()}
+          formatter={(value) => [`${value} registrations`, 'Seats']}
+        />
+        <Line type="monotone" dataKey="seats" stroke="#ef4444" strokeWidth={2} dot={false} />
+      </LineChart>
+    </ResponsiveContainer>
+  </div>
+)
+
+export default function Home() {
+  const { seats, error, loading, historicalData } = useSeatCount()
 
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center p-4">
-      <div className="bg-gray-800 p-10 rounded-lg shadow-lg text-center border border-red-500" style={{
-        boxShadow: '0 0 10px rgba(255, 0, 0, 0.2), 0 0 20px rgba(255, 0, 0, 0.1)',
-      }}>
-        <h1 className="text-4xl font-bold mb-6 text-red-500" style={{
-          textShadow: '0 0 5px rgba(255, 0, 0, 0.5), 0 0 10px rgba(255, 0, 0, 0.3)',
-        }}>
+      <div
+        className="bg-gray-800 p-6 sm:p-10 rounded-lg shadow-lg text-center border border-red-500 w-full max-w-lg"
+        style={{
+          boxShadow: '0 0 10px rgba(255, 0, 0, 0.2), 0 0 20px rgba(255, 0, 0, 0.1)',
+        }}
+      >
+        <h1
+          className="text-2xl sm:text-4xl font-bold mb-4 sm:mb-6 text-red-500"
+          style={{
+            textShadow: '0 0 5px rgba(255, 0, 0, 0.5), 0 0 10px rgba(255, 0, 0, 0.3)',
+          }}
+        >
           Cryptic Hunt 2024
         </h1>
-        <div className="flex justify-center">
-          {registrationString.split('').map((digit, index) => (
-            <AnimatedDigit key={index} digit={digit} />
-          ))}
-        </div>
-        <p className="mt-6 text-gray-400 text-xl">Registrations</p>
+        <RegistrationDisplay seats={seats} />
+        <p className="mt-4 sm:mt-6 text-gray-400 text-lg sm:text-xl">Souls ensnared</p>
+        <RegistrationGraph data={historicalData} />
       </div>
-      {error && <p className="mt-4 text-red-500 text-xl">{error}</p>}
+      <div className="h-10 mt-4">
+        {error && <div className="text-red-500 text-sm">{error}</div>}
+        {loading && seats === null && (
+          <div className="text-red-500 text-sm flex items-center">
+            <LoaderCircle className="w-6 h-6 mr-2 animate-spin" />
+            <span>Loading...</span>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
