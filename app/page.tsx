@@ -10,8 +10,9 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
+  CartesianGrid,
 } from "recharts";
-import { INTERVAL_MS, MAX_DATA_POINTS, TOTAL_SEATS } from "@/lib/constants";
+import { INTERVAL_MS } from "@/lib/constants";
 
 interface DataPoint {
   timestamp: number;
@@ -95,10 +96,6 @@ const RegistrationGraph = ({ data }: { data: DataPoint[] }) => (
           tickFormatter={(unixTime) => new Date(unixTime).toLocaleTimeString()}
         />
         <YAxis domain={["auto", "auto"]} />
-        <Tooltip
-          labelFormatter={(label) => new Date(label).toLocaleString()}
-          formatter={(value) => [`${value} registrations`, "Seats"]}
-        />
         <Line
           type="monotone"
           dataKey="seats"
