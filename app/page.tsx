@@ -1,13 +1,17 @@
-'use client'
+"use client";
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { LoaderCircle } from 'lucide-react'
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
-
-const TOTAL_SEATS = 800
-const INTERVAL_MS = 30000
-const MAX_DATA_POINTS = 50 // Limit the number of data points to store
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { LoaderCircle } from "lucide-react";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+import { INTERVAL_MS, MAX_DATA_POINTS, TOTAL_SEATS } from "@/lib/constants";
 
 interface DataPoint {
   timestamp: number;
@@ -15,51 +19,37 @@ interface DataPoint {
 }
 
 const useSeatCount = () => {
-  const [seats, setSeats] = useState<number | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState<boolean>(true)
-  const [historicalData, setHistoricalData] = useState<DataPoint[]>([])
+  const [seats, setSeats] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [historicalData, setHistoricalData] = useState<DataPoint[]>([]);
 
   const fetchCount = useCallback(async () => {
     try {
-      setLoading(true)
-      const response = await fetch(`/api/seats?t=${Date.now()}`)
-      if (!response.ok) throw new Error('Failed to fetch')
-      const { availableSeats } = await response.json()
-      const currentSeats = TOTAL_SEATS - Number(availableSeats)
-      setSeats(currentSeats)
-      setError(null)
-
-      // Update historical data
-      setHistoricalData(prevData => {
-        const newData = [...prevData, { timestamp: Date.now(), seats: currentSeats }]
-        const updatedData = newData.slice(-MAX_DATA_POINTS) // Keep only the last MAX_DATA_POINTS
-        // Store in local storage
-        localStorage.setItem('seatHistory', JSON.stringify(updatedData))
-        return updatedData
-      })
+      setLoading(true);
+      const response = await fetch("/api/seats");
+      if (!response.ok) throw new Error("Failed to fetch");
+      const { currentSeats, historicalData } = await response.json();
+      // console.log("Current Seats - ", currentSeats);
+      setSeats(currentSeats);
+      setHistoricalData(historicalData);
+      setError(null);
     } catch (error) {
-      console.error(error)
-      setError('Error fetching seat count - data might be stale')
+      console.error(error);
+      setError("Error fetching seat count - data might be stale");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, []) // Remove historicalData from dependencies
+  }, []);
 
   useEffect(() => {
-    // Load historical data from local storage on initial render
-    const storedData = localStorage.getItem('seatHistory')
-    if (storedData) {
-      setHistoricalData(JSON.parse(storedData))
-    }
+    fetchCount();
+    const interval = setInterval(fetchCount, INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [fetchCount]);
 
-    fetchCount()
-    const interval = setInterval(fetchCount, INTERVAL_MS)
-    return () => clearInterval(interval)
-  }, [fetchCount])
-
-  return { seats, error, loading, historicalData }
-}
+  return { seats, error, loading, historicalData };
+};
 
 const AnimatedDigit = ({ digit }: { digit: string }) => (
   <div className="relative inline-block w-16 h-20 overflow-hidden mx-1">
@@ -70,29 +60,29 @@ const AnimatedDigit = ({ digit }: { digit: string }) => (
         initial={{ y: -100 }}
         animate={{ y: 0 }}
         exit={{ y: 100 }}
-        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        style={{ textShadow: '0 0 3px rgba(255, 0, 0, 0.5)' }}
+        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        style={{ textShadow: "0 0 3px rgba(255, 0, 0, 0.5)" }}
       >
         {digit}
       </motion.span>
     </AnimatePresence>
   </div>
-)
+);
 
 const RegistrationDisplay = ({ seats }: { seats: number | null }) => {
-  const registrationString = useMemo(() =>
-    seats !== null ? seats.toString().padStart(4, '0') : '0000',
-    [seats]
-  )
+  const registrationString = useMemo(
+    () => (seats !== null ? seats.toString().padStart(4, "0") : "0000"),
+    [seats],
+  );
 
   return (
     <div className="flex justify-center">
-      {registrationString.split('').map((digit, index) => (
+      {registrationString.split("").map((digit, index) => (
         <AnimatedDigit key={index} digit={digit} />
       ))}
     </div>
-  )
-}
+  );
+};
 
 const RegistrationGraph = ({ data }: { data: DataPoint[] }) => (
   <div className="w-full h-64 mt-6">
@@ -101,41 +91,51 @@ const RegistrationGraph = ({ data }: { data: DataPoint[] }) => (
         <XAxis
           dataKey="timestamp"
           type="number"
-          domain={['dataMin', 'dataMax']}
+          domain={["dataMin", "dataMax"]}
           tickFormatter={(unixTime) => new Date(unixTime).toLocaleTimeString()}
         />
-        <YAxis domain={['auto', 'auto']} />
+        <YAxis domain={["auto", "auto"]} />
         <Tooltip
           labelFormatter={(label) => new Date(label).toLocaleString()}
-          formatter={(value) => [`${value} registrations`, 'Seats']}
+          formatter={(value) => [`${value} registrations`, "Seats"]}
         />
-        <Line type="monotone" dataKey="seats" stroke="#ef4444" strokeWidth={2} dot={false} />
+        <Line
+          type="monotone"
+          dataKey="seats"
+          stroke="#ef4444"
+          strokeWidth={2}
+          dot={false}
+        />
       </LineChart>
     </ResponsiveContainer>
   </div>
-)
+);
 
 export default function Home() {
-  const { seats, error, loading, historicalData } = useSeatCount()
+  const { seats, error, loading, historicalData } = useSeatCount();
 
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center p-4">
       <div
         className="bg-gray-800 p-6 sm:p-10 rounded-lg shadow-lg text-center border border-red-500 w-full max-w-lg"
         style={{
-          boxShadow: '0 0 10px rgba(255, 0, 0, 0.2), 0 0 20px rgba(255, 0, 0, 0.1)',
+          boxShadow:
+            "0 0 10px rgba(255, 0, 0, 0.2), 0 0 20px rgba(255, 0, 0, 0.1)",
         }}
       >
         <h1
           className="text-2xl sm:text-4xl font-bold mb-4 sm:mb-6 text-red-500"
           style={{
-            textShadow: '0 0 5px rgba(255, 0, 0, 0.5), 0 0 10px rgba(255, 0, 0, 0.3)',
+            textShadow:
+              "0 0 5px rgba(255, 0, 0, 0.5), 0 0 10px rgba(255, 0, 0, 0.3)",
           }}
         >
           Cryptic Hunt 2024
         </h1>
         <RegistrationDisplay seats={seats} />
-        <p className="mt-4 sm:mt-6 text-gray-400 text-lg sm:text-xl">Souls ensnared</p>
+        <p className="mt-4 sm:mt-6 text-gray-400 text-lg sm:text-xl">
+          Registrations
+        </p>
         <RegistrationGraph data={historicalData} />
       </div>
       <div className="h-10 mt-4">
@@ -148,5 +148,5 @@ export default function Home() {
         )}
       </div>
     </div>
-  )
+  );
 }
