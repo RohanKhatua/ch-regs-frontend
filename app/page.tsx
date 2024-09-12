@@ -7,12 +7,10 @@ import {
   LineChart,
   Line,
   XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
+  YAxis
 } from "recharts";
 import { INTERVAL_MS, TOTAL_SEATS } from "@/lib/constants";
+import { ChartContainer, ChartConfig, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 
 interface DataPoint {
   timestamp: number;
@@ -84,15 +82,28 @@ const RegistrationDisplay = ({ seats }: { seats: number | null }) => {
   );
 };
 
+const chartConfig = {
+  seats: {
+    label: "Seats",
+    color: "#ef4444",
+  }
+} satisfies ChartConfig;
+
+
 const RegistrationGraph = ({ data }: { data: DataPoint[] }) => (
   <div className="w-full h-64 mt-6">
-    <ResponsiveContainer width="100%" height="100%">
+    <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
+
       <LineChart data={data}>
         <XAxis
           dataKey="timestamp"
           type="number"
           domain={["dataMin", "dataMax"]}
-          tickFormatter={(unixTime) => new Date(unixTime).toLocaleTimeString()}
+          tickFormatter={(unixTime) => new Date(unixTime).toLocaleString('en-IN', {
+            weekday: 'short',
+            hour: 'numeric',
+            minute: 'numeric',
+          })}
         />
         <YAxis width={35} domain={["auto", "auto"]} />
         <Line
@@ -102,8 +113,25 @@ const RegistrationGraph = ({ data }: { data: DataPoint[] }) => (
           strokeWidth={2}
           dot={false}
         />
+        <ChartTooltip
+          content={({ payload }) => {
+            if (!payload || payload.length === 0) return null;
+            const { timestamp, seats } = payload[0].payload;
+            return (
+              <div className="p-2 bg-gray-800 text-white rounded border border-red-500">
+                <p>{`Time: ${new Date(timestamp).toLocaleString('en-IN', {
+                  weekday: 'short',
+                  hour: 'numeric',
+                  minute: 'numeric',
+                })}`}</p>
+                <p>{`Seats: ${seats}`}</p>
+              </div>
+            );
+          }}
+        />
       </LineChart>
-    </ResponsiveContainer>
+
+    </ChartContainer>
   </div>
 );
 
