@@ -26,7 +26,7 @@ const useSeatCount = () => {
   const fetchCount = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/seats");
+      const response = await fetch("https://vexye32wa5.execute-api.ap-south-1.amazonaws.com/seat-data");
       if (!response.ok) throw new Error("Failed to fetch");
       const { currentSeats, historicalData } = await response.json();
       setSeats(currentSeats);
@@ -39,6 +39,7 @@ const useSeatCount = () => {
       setLoading(false);
     }
   }, []);
+
 
   useEffect(() => {
     fetchCount();
